@@ -1,0 +1,6 @@
+env: "local"
+storage_path: "./storage/grpc.db"
+token_ttl: 1h
+grpc:
+  port: 9090
+  timeout: 10h
