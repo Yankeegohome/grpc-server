@@ -7,6 +7,7 @@ import (
 	"gRPC-server/iternal/domain/models"
 	"gRPC-server/iternal/lib/jwt"
 	"gRPC-server/iternal/storage"
+	"gRPC-server/iternal/storage/sqlite"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
@@ -20,7 +21,7 @@ type Auth struct {
 	tokenTTL    time.Duration
 }
 type UserSaver interface {
-	saveUser(
+	SaveUser(
 		ctx context.Context,
 		email string,
 		passHash []byte,
@@ -28,7 +29,7 @@ type UserSaver interface {
 }
 type UserProvider interface {
 	User(ctx context.Context, email string) (models.User, error)
-	isAdmin(ctx context.Context, userID int64) (bool, error)
+	IsAdmin(ctx context.Context, userID int64) (bool, error)
 }
 
 type AppProvider interface {
@@ -42,13 +43,7 @@ var (
 )
 
 // New создает новый инстанс для сервиса Auth
-func New(
-	log *slog.Logger,
-	userSaver UserSaver,
-	userProvider UserProvider,
-	appProvider AppProvider,
-	tokenTTL time.Duration,
-) *Auth {
+func New(log *slog.Logger, userSaver *sqlite.Storage, userProvider *sqlite.Storage, appProvider AppProvider, tokenTTL time.Duration) *Auth {
 	return &Auth{
 		usrSaver:    userSaver,
 		usrProvider: userProvider,
@@ -114,7 +109,7 @@ func (a *Auth) RegisterNewUser(
 		log.Error("failed to generate password hash", err)
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-	id, err := a.usrSaver.saveUser(ctx, email, passHash)
+	id, err := a.usrSaver.SaveUser(ctx, email, passHash)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserExists) {
 			log.Warn("user already exists", err)
@@ -130,7 +125,7 @@ func (a *Auth) RegisterNewUser(
 // IsAdmin проверяет является ли пользователь админом
 func (a *Auth) IsAdmin(
 	ctx context.Context,
-	appID int,
+	appID int64,
 ) (bool, error) {
 	const op = "Auth.IsAdmin"
 	log := a.log.With(
@@ -139,7 +134,7 @@ func (a *Auth) IsAdmin(
 	)
 	log.Info("check if user is admin")
 
-	admin, err := a.usrProvider.isAdmin(ctx, int64(appID))
+	admin, err := a.usrProvider.IsAdmin(ctx, int64(appID))
 	if err != nil {
 		if errors.Is(err, storage.ErrAppNotFound) {
 			log.Warn("user not found", err)
