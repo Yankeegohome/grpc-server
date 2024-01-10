@@ -5,22 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	_ "gRPC-server/iternal/app"
 	"gRPC-server/iternal/domain/models"
 	"gRPC-server/iternal/storage"
 	"github.com/mattn/go-sqlite3"
-	_ "github.com/mattn/go-sqlite3"
 	"log/slog"
 )
 
 type Storage struct {
 	db *sql.DB
 }
-
-//func (s *Storage) isAdmin(ctx context.Context, userID int64) (bool, error) {
-//	//TODO implement me
-//	panic("implement me")
-//}
 
 func New(storagePath string) (*Storage, error) {
 	const op = "storage.sqlite.New"
