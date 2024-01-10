@@ -2,6 +2,9 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"gRPC-server/iternal/services/auth"
+	"gRPC-server/iternal/storage"
 	grpcv1 "github.com/Yankeegohome/protos/gen/go/gRPC-S"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -43,7 +46,9 @@ func (s *serverAPI) Login(
 	}
 	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
 	if err != nil {
-		//todo: ...
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return nil, status.Error(codes.InvalidArgument, "Invalid credentials")
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	return &grpcv1.LoginResponse{
@@ -60,7 +65,9 @@ func (s *serverAPI) Register(
 	}
 	userID, err := s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		// todo: ...
+		if errors.Is(err, storage.ErrUserExists) {
+			return nil, status.Error(codes.AlreadyExists, "user already exists")
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	return &grpcv1.RegisterResponse{UserId: userID}, nil
@@ -75,7 +82,9 @@ func (s *serverAPI) IsAdmin(
 	}
 	isAdmin, err := s.auth.IsAdmin(ctx, req.GetUserId())
 	if err != nil {
-		// todo: for feature
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
 		return nil, status.Error(codes.Internal, "internal server error")
 	}
 	return &grpcv1.IsAdminResponse{IsAdmin: isAdmin}, nil
